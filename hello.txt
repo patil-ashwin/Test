@@ -1,0 +1,157 @@
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+import java.util.Map;
+
+public class Data {
+    private Version version;
+    private boolean error;
+    private String message;
+    private List<Result> results;
+
+    // Getters and Setters
+}
+
+public class Version {
+    private String edition;
+    private String api;
+    private int schema;
+
+    // Getters and Setters
+}
+
+public class Result {
+    private int alertMonth;
+    private List<Node> nodes;
+    private List<Edge> edges;
+
+    // Getters and Setters
+}
+
+public class Node {
+    private String v_id;
+    private String v_type;
+    private Map<String, Object> attributes;
+
+    // Getters and Setters
+}
+
+public class Edge {
+    private String e_type;
+    private String from_id;
+    private String from_type;
+    private String to_id;
+    private String to_type;
+    private boolean directed;
+    private Map<String, Object> attributes;
+
+    // Getters and Setters
+}
+
+
+
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.List;
+
+@Service
+public class JsonProcessingService {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public Data processJson(String json) throws IOException {
+        // Deserialize JSON string into Data object
+        Data data = objectMapper.readValue(json, Data.class);
+
+        // Process based on requirements
+
+        // 1. Delete edges where e_type is "ed_orig_bene_tp" and attributes.WIRES.42024 doesn't match
+        data.getResults().forEach(result -> {
+            if (result.getEdges() != null) {
+                result.getEdges().removeIf(edge ->
+                        "ed_orig_bene_tp".equals(edge.getE_type()) &&
+                        edge.getAttributes() != null &&
+                        edge.getAttributes().get("WIRES") != null &&
+                        !((Map<String, Object>) edge.getAttributes().get("WIRES")).containsKey("42024"));
+            }
+        });
+
+        // 2. Move attributes.WIRES.{alertMonth} to edge.attributes and delete edges[].attributes.WIRES.{alertMonth}
+        data.getResults().forEach(result -> {
+            if (result.getEdges() != null) {
+                result.getEdges().forEach(edge -> {
+                    if ("ed_orig_bene_tp".equals(edge.getE_type()) &&
+                        edge.getAttributes() != null &&
+                        edge.getAttributes().get("WIRES") != null) {
+                        
+                        Object wires = edge.getAttributes().get("WIRES");
+                        if (wires instanceof Map) {
+                            Map<String, Object> wiresMap = (Map<String, Object>) wires;
+                            int alertMonth = result.getAlertMonth();
+
+                            if (wiresMap.containsKey(String.valueOf(alertMonth))) {
+                                Map<String, Object> wires42024 = (Map<String, Object>) wiresMap.remove(String.valueOf(alertMonth));
+                                edge.getAttributes().putAll(wires42024);
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        // 3. Filter edges[].attributes.Wires_Amount > 10000 and sort edges by Wires_Amount descending, take top 100
+        data.getResults().forEach(result -> {
+            if (result.getEdges() != null) {
+                result.getEdges().forEach(edge -> {
+                    if (edge.getAttributes() != null &&
+                        edge.getAttributes().get("Wires_Amount") instanceof Integer &&
+                        (Integer) edge.getAttributes().get("Wires_Amount") > 10000) {
+                        // Implement sorting logic if needed
+                        // Assuming sorting here
+                    }
+                });
+            }
+        });
+
+        return data;
+    }
+}
+
+
+
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class JsonProcessingService {
+
+    public Data processJson(String json) throws IOException {
+        // Deserialize JSON string into Data object
+        Data data = objectMapper.readValue(json, Data.class);
+
+        // Process based on previous requirements (1 and 2)
+        // ...
+        
+        // 3. Filter edges[].attributes.Wires_Amount > 10000 and sort edges by Wires_Amount descending, take top 100
+        data.getResults().forEach(result -> {
+            if (result.getEdges() != null) {
+                List<Edge> filteredEdges = result.getEdges().stream()
+                        .filter(edge -> edge.getAttributes() != null &&
+                                edge.getAttributes().get("Wires_Amount") instanceof Integer &&
+                                (Integer) edge.getAttributes().get("Wires_Amount") > 10000)
+                        .sorted(Comparator.comparing(edge -> -(Integer) edge.getAttributes().get("Wires_Amount")))
+                        .limit(100)
+                        .collect(Collectors.toList());
+
+                result.setEdges(filteredEdges); // Set filtered and sorted list back to result
+            }
+        });
+
+        return data;
+    }
+}
