@@ -1,52 +1,139 @@
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
 
-public class Data {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL) // Ignore null values in JSON serialization
+@JsonIgnoreProperties(ignoreUnknown = true) // Ignore unknown fields in JSON
+public class ApiResponse {
+
+    @JsonProperty("version")
     private Version version;
+
+    @JsonProperty("error")
     private boolean error;
+
+    @JsonProperty("message")
     private String message;
+
+    @JsonProperty("results")
     private List<Result> results;
 
-    // Getters and Setters
 }
 
-public class Version {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Version {
+
+    @JsonProperty("edition")
     private String edition;
+
+    @JsonProperty("api")
     private String api;
+
+    @JsonProperty("schema")
     private int schema;
-
-    // Getters and Setters
 }
 
-public class Result {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Result {
+
+    @JsonProperty("alertMonth")
     private int alertMonth;
+
+    @JsonProperty("nodes")
     private List<Node> nodes;
+
+    @JsonProperty("edges")
     private List<Edge> edges;
-
-    // Getters and Setters
 }
 
-public class Node {
-    private String v_id;
-    private String v_type;
-    private Map<String, Object> attributes;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Node {
 
-    // Getters and Setters
+    @JsonProperty("v_id")
+    private String vId;
+
+    @JsonProperty("v_type")
+    private String vType;
+
+    @JsonProperty("attributes")
+    private Attributes attributes;
 }
 
-public class Edge {
-    private String e_type;
-    private String from_id;
-    private String from_type;
-    private String to_id;
-    private String to_type;
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Edge {
+
+    @JsonProperty("e_type")
+    private String eType;
+
+    @JsonProperty("from_id")
+    private String fromId;
+
+    @JsonProperty("from_type")
+    private String fromType;
+
+    @JsonProperty("to_id")
+    private String toId;
+
+    @JsonProperty("to_type")
+    private String toType;
+
+    @JsonProperty("directed")
     private boolean directed;
-    private Map<String, Object> attributes;
 
-    // Getters and Setters
+    @JsonProperty("attributes")
+    private EdgeAttributes attributes;
 }
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Attributes {
+
+    @JsonProperty("someAttribute")
+    private String someAttribute;
+}
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+class EdgeAttributes {
+
+    @JsonProperty("Wires_Amount")
+    private int wiresAmount;
+
+    @JsonProperty("someOtherAttribute")
+    private String someOtherAttribute;
+}
+
+
 
 
 
