@@ -1,7 +1,7 @@
-We’ve developed a standalone Java application as a common library and integrated it with a pipeline that includes a Maven build stage.
-
-Now, we need to add another stage to the pipeline where the JAR file from the target folder will be uploaded to Artifactory as a Maven package. This will allow us to use the library as a Maven dependency in other APIs and services.
-
-Could you please assist us in configuring the pipeline to push the JAR file as a Maven package to Artifactory? Let me know if you need any additional details or access.
-
-Thanks in advance for your support!
+Successfully completed the GENAI certification, demonstrating dedication to upskilling.
+Cross-skilled in React JS and currently developing a React JS application independently.
+Effectively handled assigned tasks with minimal supervision, showcasing initiative and reliability.
+Assisted the US Bank team by generating data for client demos, significantly enhancing the client experience.
+Proactively led production deployments, ensuring smooth and timely execution.
+Independently writing TigerGraph queries, creating schemas, and managing load jobs with expertise.
+Played a key role in troubleshooting production issues, contributing to swift resolution and maintaining system stability.
