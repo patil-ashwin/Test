@@ -120,26 +120,85 @@ public class MicrosoftAuthFilter implements WebFilter {
     }
 }
 
-// pom.xml (Additional Dependencies)
-<dependencies>
-    <!-- Existing dependencies -->
-    <dependency>
-        <groupId>com.github.ben-manes.caffeine</groupId>
-        <artifactId>caffeine</artifactId>
-        <version>3.1.5</version>
-    </dependency>
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-api</artifactId>
-        <version>0.11.5</version>
-    </dependency>
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-impl</artifactId>
-        <version>0.11.5</version>
-    </dependency>
-    <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-    </dependency>
-</dependencies>
+
+// MicrosoftAuthFilter.java
+package com.example.auth.filter;
+
+import com.example.auth.model.TokenResponse;
+import com.example.auth.service.MicrosoftAuthService;
+import com.example.auth.util.JwtTokenValidator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Mono;
+
+@Component
+public class MicrosoftAuthFilter implements WebFilter {
+    private static final String TOKEN_CACHE_NAME = "microsoftTokenCache";
+    private static final String TOKEN_CACHE_KEY = "microsoft_access_token";
+
+    @Autowired
+    private CacheManager cacheManager;
+
+    @Autowired
+    private MicrosoftAuthService microsoftAuthService;
+
+    @Autowired
+    private JwtTokenValidator jwtTokenValidator;
+
+    private final ObjectMapper objectMapper;
+
+    public MicrosoftAuthFilter() {
+        this.objectMapper = new ObjectMapper();
+    }
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        return Mono.fromSupplier(() -> {
+            Cache cache = cacheManager.getCache(TOKEN_CACHE_NAME);
+            TokenResponse cachedToken = cache != null 
+                ? cache.get(TOKEN_CACHE_KEY, TokenResponse.class) 
+                : null;
+            
+            if (cachedToken != null && 
+                jwtTokenValidator.isValidToken(cachedToken.getAccessToken())) {
+                System.out.println("Using cached token");
+                return cachedToken.getAccessToken();
+            }
+            return null;
+        })
+        .flatMap(token -> token != null 
+            ? Mono.just(token) 
+            : fetchAndCacheNewToken())
+        .doOnNext(token -> {
+            System.out.println("Authenticated token: " + token);
+            // You can add token to request headers or perform other actions
+        })
+        .then(chain.filter(exchange));
+    }
+
+    private Mono<String> fetchAndCacheNewToken() {
+        return Mono.fromCallable(() -> {
+            try {
+                String authResponse = microsoftAuthService.authenticateMicrosoftAccount();
+                TokenResponse tokenResponse = objectMapper.readValue(authResponse, TokenResponse.class);
+                
+                // Store in cache
+                Cache cache = cacheManager.getCache(TOKEN_CACHE_NAME);
+                if (cache != null) {
+                    cache.put(TOKEN_CACHE_KEY, tokenResponse);
+                }
+                
+                return tokenResponse.getAccessToken();
+            } catch (Exception e) {
+                System.err.println("Token retrieval failed: " + e.getMessage());
+                throw new RuntimeException("Failed to retrieve access token", e);
+            }
+        });
+    }
+}
