@@ -1,7 +1,0 @@
-Successfully completed the GENAI certification, demonstrating dedication to upskilling.
-Cross-skilled in React JS and currently developing a React JS application independently.
-Effectively handled assigned tasks with minimal supervision, showcasing initiative and reliability.
-Assisted the US Bank team by generating data for client demos, significantly enhancing the client experience.
-Proactively led production deployments, ensuring smooth and timely execution.
-Independently writing TigerGraph queries, creating schemas, and managing load jobs with expertise.
-Played a key role in troubleshooting production issues, contributing to swift resolution and maintaining system stability.
