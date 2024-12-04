@@ -3,7 +3,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.PropertySource;
 
 import java.util.Map;
 import java.util.Properties;
@@ -24,9 +26,17 @@ public class EnvironmentLoggerConfig {
             Properties systemProperties = System.getProperties();
             systemProperties.forEach((key, value) -> log.info("{}={}", key, value));
 
-            log.info("### Logging Spring Environment Properties ###");
-            for (String propertyName : environment.getPropertySources().toString().split("\n")) {
-                log.info(propertyName.trim());
+            if (environment instanceof ConfigurableEnvironment configurableEnvironment) {
+                log.info("### Logging Spring Environment Property Sources ###");
+                for (PropertySource<?> propertySource : configurableEnvironment.getPropertySources()) {
+                    log.info("Property Source: {}", propertySource.getName());
+                    if (propertySource.getSource() instanceof Map) {
+                        ((Map<?, ?>) propertySource.getSource()).forEach((key, value) ->
+                                log.info("{}={}", key, value));
+                    }
+                }
+            } else {
+                log.warn("Environment is not ConfigurableEnvironment; property sources cannot be logged.");
             }
         };
     }
