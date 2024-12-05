@@ -1,48 +1,50 @@
+server:
+  ssl:
+    key-store: classpath:your-keystore.jks
+    key-store-password: your-password
+    key-password: your-key-password
+
+feign:
+  httpclient:
+    enabled: true
+
+custom:
+  ssl:
+    trust-store: classpath:your-keystore.jks
+    trust-store-password: your-password
+
+
+    import feign.Client;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.netty.http.client.HttpClient;
 
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import java.io.FileInputStream;
+import java.io.File;
 import java.security.KeyStore;
 
 @Configuration
-public class WebClientConfig {
+public class FeignClientConfig {
 
     @Bean
-    public WebClient webClient() throws Exception {
-        // Load the JKS file
-        String keyStorePath = "/path/to/your/keystore.jks";
-        String keyStorePassword = "your-keystore-password";
-
+    public Client feignClient() throws Exception {
+        // Load the JKS
         KeyStore keyStore = KeyStore.getInstance("JKS");
-        try (FileInputStream keyStoreInputStream = new FileInputStream(keyStorePath)) {
-            keyStore.load(keyStoreInputStream, keyStorePassword.toCharArray());
-        }
+        keyStore.load(getClass().getResourceAsStream("/your-keystore.jks"),
+                      "your-password".toCharArray());
 
-        // Initialize KeyManagerFactory
-        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        keyManagerFactory.init(keyStore, keyStorePassword.toCharArray());
-
-        // Initialize TrustManagerFactory
-        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-        trustManagerFactory.init(keyStore);
-
-        // Build SSLContext
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
-
-        // Configure Reactor Netty HttpClient with SSL
-        HttpClient httpClient = HttpClient.create()
-                .secure(sslSpec -> sslSpec.sslContext(sslContext));
-
-        // Create WebClient with custom HttpClient
-        return WebClient.builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
+        // Configure SSLContext
+        SSLContext sslContext = SSLContextBuilder.create()
+                .loadKeyMaterial(keyStore, "your-key-password".toCharArray())
                 .build();
+
+        SSLConnectionSocketFactory socketFactory = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+        CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(socketFactory).build();
+
+        return new Client.Default(httpClient, null);
     }
 }
