@@ -1,43 +1,48 @@
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.PropertySource;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
 
-import java.util.Map;
-import java.util.Properties;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.FileInputStream;
+import java.security.KeyStore;
 
 @Configuration
-public class EnvironmentLoggerConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(EnvironmentLoggerConfig.class);
+public class WebClientConfig {
 
     @Bean
-    public CommandLineRunner logEnvironmentVariables(Environment environment) {
-        return args -> {
-            log.info("### Logging Environment Variables ###");
-            Map<String, String> envVars = System.getenv();
-            envVars.forEach((key, value) -> log.info("{}={}", key, value));
+    public WebClient webClient() throws Exception {
+        // Load the JKS file
+        String keyStorePath = "/path/to/your/keystore.jks";
+        String keyStorePassword = "your-keystore-password";
 
-            log.info("### Logging System Properties ###");
-            Properties systemProperties = System.getProperties();
-            systemProperties.forEach((key, value) -> log.info("{}={}", key, value));
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        try (FileInputStream keyStoreInputStream = new FileInputStream(keyStorePath)) {
+            keyStore.load(keyStoreInputStream, keyStorePassword.toCharArray());
+        }
 
-            if (environment instanceof ConfigurableEnvironment configurableEnvironment) {
-                log.info("### Logging Spring Environment Property Sources ###");
-                for (PropertySource<?> propertySource : configurableEnvironment.getPropertySources()) {
-                    log.info("Property Source: {}", propertySource.getName());
-                    if (propertySource.getSource() instanceof Map) {
-                        ((Map<?, ?>) propertySource.getSource()).forEach((key, value) ->
-                                log.info("{}={}", key, value));
-                    }
-                }
-            } else {
-                log.warn("Environment is not ConfigurableEnvironment; property sources cannot be logged.");
-            }
-        };
+        // Initialize KeyManagerFactory
+        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        keyManagerFactory.init(keyStore, keyStorePassword.toCharArray());
+
+        // Initialize TrustManagerFactory
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init(keyStore);
+
+        // Build SSLContext
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
+
+        // Configure Reactor Netty HttpClient with SSL
+        HttpClient httpClient = HttpClient.create()
+                .secure(sslSpec -> sslSpec.sslContext(sslContext));
+
+        // Create WebClient with custom HttpClient
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
     }
 }
